@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Analytics Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --color-black: #0a0a0a;
+            --color-dark: #1a1a1a;
+            --color-jade: #00d4aa;
+            --color-jade-hover: #00f5c4;
+            --color-jade-glow: rgba(0, 212, 170, 0.3);
+            --color-gray: #6b6b6b;
+            --color-gray-light: #9a9a9a;
+            --color-gray-dark: #2a2a2a;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--color-black);
+            color: var(--color-gray-light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 170, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 170, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--color-gray-dark);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-jade);
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--color-jade);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: rgba(0, 212, 170, 0.1);
+            box-shadow: 0 0 20px var(--color-jade-glow);
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            justify-content: center;
+            background: var(--color-dark);
+            border-bottom: 2px solid var(--color-gray-dark);
+        }
+
+        .tab-link {
+            padding: 20px 40px;
+            color: var(--color-gray-light);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-link:hover {
+            color: var(--color-jade);
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .tab-link.active {
+            color: var(--color-jade);
+            border-bottom-color: var(--color-jade);
+        }
+
+        /* Content */
+        .main-content {
+            padding: 60px 40px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--color-gray);
+            margin-bottom: 40px;
+        }
+
+        /* Card */
+        .card {
+            background: var(--color-dark);
+            border: 1px solid var(--color-jade);
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        /* Upload */
+        .upload-area {
+            border: 2px dashed var(--color-jade);
+            border-radius: 12px;
+            padding: 80px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 212, 170, 0.03);
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 212, 170, 0.08);
+            border-color: var(--color-jade-hover);
+            box-shadow: 0 0 40px var(--color-jade-glow);
+        }
+
+        .upload-area.dragover {
+            background: rgba(0, 212, 170, 0.15);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Template Grid */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+
+        .template-card {
+            background: var(--color-dark);
+            border: 2px solid var(--color-gray-dark);
+            border-radius: 12px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .template-card:hover {
+            border-color: var(--color-jade);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px var(--color-jade-glow);
+        }
+
+        .template-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .template-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .template-desc {
+            font-size: 14px;
+            color: var(--color-gray);
+            line-height: 1.7;
+        }
+
+        /* Button */
+        .btn {
+            background: linear-gradient(135deg, var(--color-jade), var(--color-jade-hover));
+            color: var(--color-black);
+            border: none;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--color-jade-glow);
+            font-family: var(--font-main);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--color-jade-glow);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--color-jade);
+            border: 2px solid var(--color-jade);
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 25px;
+            border: 4px solid rgba(0, 212, 170, 0.1);
+            border-top: 4px solid var(--color-jade);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 30px var(--color-jade-glow);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .insight-box {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.15), rgba(0, 212, 170, 0.05));
+            border: 2px solid var(--color-jade);
+            border-left: 6px solid var(--color-jade);
+            padding: 35px;
+            margin-bottom: 40px;
+            border-radius: 10px;
+        }
+
+        .insight-box h3 {
+            color: var(--color-jade);
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        .insight-box p {
+            color: var(--color-gray-light);
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .chart-container {
+            background: var(--color-dark);
+            border: 1px solid var(--color-gray-dark);
+            padding: 35px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .chart-desc {
+            font-size: 14px;
+            color: var(--color-gray);
+            margin-bottom: 25px;
+        }
+
+        /* News Card */
+        .news-card {
+            background: var(--color-dark);
+            border: 1px solid var(--color-gray-dark);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .news-card:hover {
+            border-color: var(--color-jade);
+            transform: translateX(8px);
+            box-shadow: 0 4px 20px var(--color-jade-glow);
+        }
+
+        .news-tag {
+            display: inline-block;
+            background: rgba(0, 212, 170, 0.15);
+            color: var(--color-jade);
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        .news-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .news-excerpt {
+            font-size: 15px;
+            color: var(--color-gray);
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+
+        .news-date {
+            font-size: 13px;
+            color: var(--color-gray-light);
+        }
+
+        /* Settings */
+        .settings-section {
+            background: var(--color-dark);
+            border: 1px solid var(--color-gray-dark);
+            border-radius: 12px;
+            padding: 35px;
+            margin-bottom: 30px;
+        }
+
+        .settings-header {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--color-gray-dark);
+        }
+
+        .settings-item {
+            padding: 25px 0;
+            border-bottom: 1px solid var(--color-gray-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-info {
+            flex: 1;
+        }
+
+        .settings-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .settings-desc {
+            font-size: 14px;
+            color: var(--color-gray);
+        }
+
+        .toggle-switch {
+            width: 60px;
+            height: 32px;
+            background: var(--color-gray-dark);
+            border-radius: 16px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--color-jade);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(28px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 15px 20px;
+            }
+
+            .tab-nav {
+                overflow-x: auto;
+            }
+
+            .tab-link {
+                padding: 15px 25px;
+                font-size: 12px;
+            }
+
+            .template-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo" onclick="location.reload()">
+                <div class="logo-icon">⚽</div>
+                <span>Football Analytics</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <div class="tab-link active" onclick="switchTab('main')">📊 メインコンテンツ</div>
+        <div class="tab-link" onclick="switchTab('news')">📰 関連記事・ニュース</div>
+        <div class="tab-link" onclick="switchTab('settings')">⚙️ 設定</div>
+    </nav>
+
+    <div class="container">
+        <div class="main-content">
+            
+            <!-- Tab 1: Main Content -->
+            <div id="main" class="tab-content active">
+                
+                <!-- Step 1: Upload -->
+                <div id="step-upload">
+                    <h1 class="section-title">データをアップロード</h1>
+                    <p class="section-subtitle">CSVファイルをアップロードして分析を開始しましょう</p>
+                    
+                    <div class="card">
+                        <div class="upload-area" id="uploadArea">
+                            <div style="font-size: 72px; margin-bottom: 25px;">📊</div>
+                            <h2 style="color: #fff; font-size: 24px; margin-bottom: 12px;">CSVファイルをドロップ</h2>
+                            <p style="color: var(--color-gray); font-size: 16px; margin: 15px 0;">または</p>
+                            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                                ファイルを選択
+                            </button>
+                            <input type="file" id="fileInput" accept=".csv">
+                            <p style="color: var(--color-gray); font-size: 15px; margin-top: 30px; line-height: 1.6;">
+                                選手統計、試合結果などのサッカーデータに対応<br>
+                                Player, Pos, Squad, Gls, Ast などの列を含むCSVファイル
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Template Selection -->
+                <div id="step-templates" style="display: none;">
+                    <h1 class="section-title">分析テンプレートを選択</h1>
+                    <p class="section-subtitle">
+                        読み込み済み: <strong style="color: var(--color-jade);" id="csvFileName"></strong> 
+                        (<span id="csvInfo"></span>)
+                    </p>
+
+                    <div class="template-grid">
+                        <div class="template-card" onclick="executeTemplate('player-comparison')">
+                            <div class="template-icon">👥</div>
+                            <h3 class="template-title">選手比較分析</h3>
+                            <p class="template-desc">複数選手の統計を並べて比較。得点力、パス精度、守備貢献度を多角的に評価します。</p>
+                        </div>
+
+                        <div class="template-card" onclick="executeTemplate('team-performance')">
+                            <div class="template-icon">📊</div>
+                            <h3 class="template-title">チームパフォーマンス</h3>
+                            <p class="template-desc">チーム全体の統計を集計・可視化。ポジション別の貢献度や全体傾向を把握します。</p>
+                        </div>
+
+                        <div class="template-card" onclick="executeTemplate('match-trends')">
+                            <div class="template-icon">📈</div>
+                            <h3 class="template-title">試合別推移分析</h3>
+                            <p class="template-desc">試合ごとのパフォーマンス推移を時系列表示。調子の波や成長曲線を確認します。</p>
+                        </div>
+
+                        <div class="template-card" onclick="executeTemplate('position-comparison')">
+                            <div class="template-icon">⚖️</div>
+                            <h3 class="template-title">ポジション別比較</h3>
+                            <p class="template-desc">ポジションごとの平均値や特徴を比較。各ポジションの役割と貢献を理解します。</p>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 50px;">
+                        <button class="btn btn-secondary" onclick="resetToUpload()">
+                            別のデータをアップロード
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Results -->
+                <div id="step-results" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+                        <div>
+                            <h1 class="section-title">分析結果</h1>
+                            <p class="section-subtitle" id="currentTemplateName"></p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="backToTemplates()">
+                            テンプレート選択に戻る
+                        </button>
+                    </div>
+
+                    <div class="loading" id="analysisLoading">
+                        <div class="spinner"></div>
+                        <p style="color: var(--color-jade); font-size: 16px; font-weight: 700; margin-top: 10px;">
+                            AI分析中...
+                        </p>
+                    </div>
+
+                    <div id="analysisResults"></div>
+                </div>
+            </div>
+
+            <!-- Tab 2: News -->
+            <div id="news" class="tab-content">
+                <h1 class="section-title">関連記事・ニュース</h1>
+                <p class="section-subtitle">サッカーデータ分析に関する最新情報</p>
+
+                <div class="news-card">
+                    <span class="news-tag">データ分析</span>
+                    <h3 class="news-title">xGとは？期待ゴール値を理解する完全ガイド</h3>
+                    <p class="news-excerpt">
+                        期待ゴール（xG）は現代サッカー分析において最も重要な指標の一つです。この記事では、xGの基本概念、計算方法、そして実践的な活用方法を詳しく解説します...
+                    </p>
+                    <p class="news-date">2024年2月5日 • 8分で読める</p>
+                </div>
+
+                <div class="news-card">
+                    <span class="news-tag">活用ガイド</span>
+                    <h3 class="news-title">CSVデータの準備と最適化：分析精度を高めるテクニック</h3>
+                    <p class="news-excerpt">
+                        質の高い分析は、質の高いデータから。CSVファイルの正しい準備方法、データクリーニングのポイント、そしてよくあるエラーとその対処法を紹介します...
+                    </p>
+                    <p class="news-date">2024年2月3日 • 10分で読める</p>
+                </div>
+
+                <div class="news-card">
+                    <span class="news-tag">トレンド</span>
+                    <h3 class="news-title">プレミアリーグ2024/25：データで見る戦術革命</h3>
+                    <p class="news-excerpt">
+                        今シーズンのプレミアリーグで見られる戦術的トレンドをデータで分析。プレッシング強度、ポゼッションスタイル、攻撃パターンの最新動向を解説します...
+                    </p>
+                    <p class="news-date">2024年2月1日 • 12分で読める</p>
+                </div>
+
+                <div class="news-card">
+                    <span class="news-tag">分析手法</span>
+                    <h3 class="news-title">パス成功率だけでは見えない：プログレッシブパスの重要性</h3>
+                    <p class="news-excerpt">
+                        単純なパス成功率だけでは選手の真の貢献度は測れません。プログレッシブパス、キーパス、スルーパスなど、より高度な指標について詳しく解説します...
+                    </p>
+                    <p class="news-date">2024年1月25日 • 9分で読める</p>
+                </div>
+
+                <div class="news-card">
+                    <span class="news-tag">ベストプラクティス</span>
+                    <h3 class="news-title">効果的なデータ可視化の7つの原則</h3>
+                    <p class="news-excerpt">
+                        データは見せ方次第で伝わり方が大きく変わります。グラフの選択、配色、レイアウトなど、プロフェッショナルな可視化のためのベストプラクティスを紹介...
+                    </p>
+                    <p class="news-date">2024年1月22日 • 7分で読める</p>
+                </div>
+
+                <div class="news-card">
+                    <span class="news-tag">チュートリアル</span>
+                    <h3 class="news-title">初心者のためのサッカーデータ分析入門</h3>
+                    <p class="news-excerpt">
+                        これからサッカーデータ分析を始める方へ。基本的な用語、データの見方、分析の進め方をステップバイステップで解説します...
+                    </p>
+                    <p class="news-date">2024年1月18日 • 15分で読める</p>
+                </div>
+            </div>
+
+            <!-- Tab 3: Settings -->
+            <div id="settings" class="tab-content">
+                <h1 class="section-title">設定</h1>
+                <p class="section-subtitle">アカウントと環境設定を管理</p>
+
+                <!-- Notification Settings -->
+                <div class="settings-section">
+                    <h2 class="settings-header">通知設定</h2>
+                    
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">新機能のお知らせ</div>
+                            <div class="settings-desc">新しいテンプレートや機能がリリースされた時に通知</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">記事・ニュース更新</div>
+                            <div class="settings-desc">新しい記事が公開された時に通知</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">分析完了通知</div>
+                            <div class="settings-desc">データ分析が完了した時に通知</div>
+                        </div>
+                        <div class="toggle-switch" onclick="toggleSwitch(this)"></div>
+                    </div>
+                </div>
+
+                <!-- Personal Information -->
+                <div class="settings-section">
+                    <h2 class="settings-header">個人情報管理</h2>
+                    
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">メールアドレス</div>
+                            <div class="settings-desc">user@example.com</div>
+                        </div>
+                        <button class="btn btn-secondary">変更</button>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">パスワード</div>
+                            <div class="settings-desc">••••••••</div>
+                        </div>
+                        <button class="btn btn-secondary">変更</button>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">データのエクスポート</div>
+                            <div class="settings-desc">保存された分析結果をダウンロード</div>
+                        </div>
+                        <button class="btn btn-secondary">エクスポート</button>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-info">
+                            <div class="settings-label">アカウント削除</div>
+                            <div class="settings-desc">全てのデータが削除されます（この操作は取り消せません）</div>
+                        </div>
+                        <button class="btn btn-secondary" style="color: #ff4d4d; border-color: #ff4d4d;">
+                            削除
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background: var(--color-dark); border-top: 1px solid var(--color-gray-dark); padding: 40px 20px; margin-top: 80px;">
+        <div style="max-width: 1600px; margin: 0 auto; text-align: center;">
+            <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 20px;">
+                <a href="#" style="color: var(--color-gray-light); text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='var(--color-jade)'" onmouseout="this.style.color='var(--color-gray-light)'">使い方ガイド</a>
+                <a href="#" style="color: var(--color-gray-light); text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='var(--color-jade)'" onmouseout="this.style.color='var(--color-gray-light)'">よくある質問</a>
+                <a href="#" style="color: var(--color-gray-light); text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='var(--color-jade)'" onmouseout="this.style.color='var(--color-gray-light)'">お問い合わせ</a>
+                <a href="#" style="color: var(--color-gray-light); text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='var(--color-jade)'" onmouseout="this.style.color='var(--color-gray-light)'">利用規約</a>
+                <a href="#" style="color: var(--color-gray-light); text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='var(--color-jade)'" onmouseout="this.style.color='var(--color-gray-light)'">プライバシーポリシー</a>
+            </div>
+            <p style="color: var(--color-gray); font-size: 13px; margin: 0;">
+                &copy; 2024 Football Analytics Platform. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Global State
+        let csvData = [];
+        let csvHeaders = [];
+        let currentFile = '';
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            
+            const links = document.querySelectorAll('.tab-link');
+            if (tabName === 'main') links[0].classList.add('active');
+            if (tabName === 'news') links[1].classList.add('active');
+            if (tabName === 'settings') links[2].classList.add('active');
+            
+            window.scrollTo(0, 0);
+        }
+
+        // Settings Toggle
+        function toggleSwitch(el) {
+            el.classList.toggle('active');
+        }
+
+        // File Upload
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                processFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+
+        function processFile(file) {
+            currentFile = file.name;
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    csvData = results.data;
+                    csvHeaders = results.meta.fields;
+                    showTemplateSelection();
+                }
+            });
+        }
+
+        function showTemplateSelection() {
+            document.getElementById('step-upload').style.display = 'none';
+            document.getElementById('step-templates').style.display = 'block';
+            document.getElementById('csvFileName').textContent = currentFile;
+            document.getElementById('csvInfo').textContent = `${csvData.length}行 × ${csvHeaders.length}列`;
+        }
+
+        function resetToUpload() {
+            document.getElementById('step-upload').style.display = 'block';
+            document.getElementById('step-templates').style.display = 'none';
+            document.getElementById('step-results').style.display = 'none';
+            fileInput.value = '';
+        }
+
+        function backToTemplates() {
+            document.getElementById('step-templates').style.display = 'block';
+            document.getElementById('step-results').style.display = 'none';
+        }
+
+        async function executeTemplate(templateType) {
+            const templates = {
+                'player-comparison': '選手比較分析',
+                'team-performance': 'チームパフォーマンス',
+                'match-trends': '試合別推移分析',
+                'position-comparison': 'ポジション別比較'
+            };
+
+            const prompts = {
+                'player-comparison': '得点上位10選手のゴール数、アシスト数、出場時間を比較する棒グラフを作成',
+                'team-performance': 'チーム別の平均ゴール数と平均アシスト数を比較する棒グラフを作成',
+                'match-trends': '主要選手のパフォーマンス推移を折れ線グラフで表示',
+                'position-comparison': 'ポジション別の平均統計を比較する棒グラフを作成'
+            };
+
+            document.getElementById('step-templates').style.display = 'none';
+            document.getElementById('step-results').style.display = 'block';
+            document.getElementById('currentTemplateName').textContent = `テンプレート: ${templates[templateType]}`;
+            document.getElementById('analysisLoading').classList.add('active');
+            document.getElementById('analysisResults').innerHTML = '';
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 4000,
+                        messages: [{
+                            role: 'user',
+                            content: `サッカーデータの分析アシスタントとして、以下のデータを分析してChart.jsで描画可能なグラフを提案してください。
+
+データ: ${csvData.length}行 × ${csvHeaders.length}列
+列: ${csvHeaders.join(', ')}
+サンプル: ${JSON.stringify(csvData.slice(0, 3), null, 2)}
+
+分析要求: ${prompts[templateType]}
+
+JSON形式で応答してください:
+{
+  "insights": "主要な洞察（3-5文）",
+  "charts": [{
+    "type": "bar/line/scatter/radar",
+    "title": "タイトル",
+    "description": "説明",
+    "data": {
+      "labels": [],
+      "datasets": [{"label": "名前", "data": [], "backgroundColor": "#00d4aa", "borderColor": "#00d4aa"}]
+    },
+    "options": {
+      "responsive": true,
+      "plugins": {"legend": {"labels": {"color": "#9a9a9a"}}, "title": {"display": true, "text": "タイトル", "color": "#fff"}},
+      "scales": {"x": {"ticks": {"color": "#9a9a9a"}}, "y": {"ticks": {"color": "#9a9a9a"}}}
+    }
+  }]
+}`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const content = data.content[0].text;
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                
+                if (!jsonMatch) throw new Error('無効な応答');
+                
+                const analysis = JSON.parse(jsonMatch[0]);
+                displayAnalysis(analysis);
+
+            } catch (error) {
+                document.getElementById('analysisResults').innerHTML = `
+                    <div class="card" style="border-color: #ff4d4d; background: rgba(255, 77, 77, 0.1);">
+                        <h3 style="color: #ff4d4d;">エラー</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('analysisLoading').classList.remove('active');
+            }
+        }
+
+        function displayAnalysis(analysis) {
+            let html = `
+                <div class="insight-box">
+                    <h3>📊 分析結果</h3>
+                    <p>${analysis.insights}</p>
+                </div>
+            `;
+
+            analysis.charts.forEach((chart, i) => {
+                const id = `chart_${i}`;
+                html += `
+                    <div class="chart-container">
+                        <h4 class="chart-title">${chart.title}</h4>
+                        <p class="chart-desc">${chart.description}</p>
+                        <canvas id="${id}"></canvas>
+                    </div>
+                `;
+            });
+
+            document.getElementById('analysisResults').innerHTML = html;
+
+            analysis.charts.forEach((chart, i) => {
+                new Chart(document.getElementById(`chart_${i}`), {
+                    type: chart.type,
+                    data: chart.data,
+                    options: chart.options
+                });
+            });
+        }
+    </script>
+</body>
+</html>
